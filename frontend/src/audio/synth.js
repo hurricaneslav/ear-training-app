@@ -3,16 +3,64 @@
 // это гарантирует идеальный строй, в отличие от сэмплов, где возможна расстройка.
 
 let ctx = null;
+let masterOut = null;
 
 export function getAudioContext() {
   if (!ctx) {
     ctx = new (window.AudioContext || window.webkitAudioContext)();
   }
-  // На iOS/Telegram WebView контекст может быть suspended до первого user gesture
-  if (ctx.state === 'suspended') {
-    ctx.resume();
-  }
   return ctx;
+}
+
+// Единая выходная точка для ВСЕХ звуков. Позволяет мгновенно заглушить
+// всё что играет сейчас (см. stopAllSounds) — без этого повторные нажатия
+// "▶" или быстрый переход между раундами накапливают звуки друг на друга.
+export function getMasterOut() {
+  const audioCtx = getAudioContext();
+  if (!masterOut || masterOut.context !== audioCtx) {
+    masterOut = audioCtx.createGain();
+    masterOut.gain.value = 1;
+    masterOut.connect(audioCtx.destination);
+  }
+  return masterOut;
+}
+
+// Мгновенно обрывает всё текущее звучание: отключаем старый master (все ноды,
+// которые в него играли, теряют путь к destination и просто "проваливаются в тишину"
+// без щелчка благодаря быстрому fade), и создаём новый чистый master для следующего звука.
+export function stopAllSounds() {
+  const audioCtx = getAudioContext();
+  if (masterOut) {
+    try {
+      const now = audioCtx.currentTime;
+      masterOut.gain.cancelScheduledValues(now);
+      masterOut.gain.setValueAtTime(masterOut.gain.value, now);
+      masterOut.gain.linearRampToValueAtTime(0, now + 0.02); // короткий fade, без щелчка
+      masterOut.disconnect(audioCtx.destination);
+    } catch (e) {
+      // no-op — если нода уже отключена
+    }
+  }
+  masterOut = null; // следующий getMasterOut() создаст новый чистый узел
+}
+
+// iOS Safari требует, чтобы создание/resume AudioContext произошло СИНХРОННО
+// внутри обработчика user gesture (клик/тап), иначе звук навсегда останется
+// заблокирован для этого контекста. Вызывать эту функцию напрямую в onClick,
+// без await/setTimeout перед вызовом getAudioContext().
+export function unlockAudioContext() {
+  const audioCtx = getAudioContext();
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+  // Доп. трюк для iOS: проиграть беззвучный буфер синхронно в жесте -
+  // это надёжно "будит" аудио-подсистему даже когда resume() ещё не успел зарезолвиться
+  const buffer = audioCtx.createBuffer(1, 1, 22050);
+  const source = audioCtx.createBufferSource();
+  source.buffer = buffer;
+  source.connect(audioCtx.destination);
+  source.start(0);
+  return audioCtx;
 }
 
 // ADSR envelope применяется к GainNode

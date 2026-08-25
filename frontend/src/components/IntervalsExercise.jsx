@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { playInterval } from '../audio/player.js';
+import { unlockAudioContext } from '../audio/synth.js';
 import { getInterval } from '../audio/intervals.js';
 import {
   BAR_MAX,
@@ -17,6 +18,7 @@ export default function IntervalsExercise({ settings, unlockedIds, progress, set
   const [selectedId, setSelectedId] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const roundLockRef = useRef(false);
+  const playTimeoutRef = useRef(null);
 
   const activeIds = getActiveIntervalIds(settings.enabled_intervals, unlockedIds);
 
@@ -32,33 +34,36 @@ export default function IntervalsExercise({ settings, unlockedIds, progress, set
     setAnswerState(null);
     setSelectedId(null);
     roundLockRef.current = false;
-  }, [activeIds, progress, settings]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings]); // activeIds/progress намеренно не в зависимостях — см. комментарий у useEffect ниже
 
   useEffect(() => {
     startNewRound();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const play = useCallback(() => {
-    if (!round) return;
-    const interval = getInterval(round.intervalId);
+  const play = useCallback((r) => {
+    const target = r || round;
+    if (!target) return;
+    const interval = getInterval(target.intervalId);
     setIsPlaying(true);
+    if (playTimeoutRef.current) clearTimeout(playTimeoutRef.current);
     const dur = playInterval({
-      rootMidi: round.rootMidi,
+      rootMidi: target.rootMidi,
       semitones: interval.semitones,
-      direction: round.direction,
+      direction: target.direction,
       instrumentId: settings.instrument,
     });
-    setTimeout(() => setIsPlaying(false), dur * 1000);
+    playTimeoutRef.current = setTimeout(() => setIsPlaying(false), dur * 1000);
   }, [round, settings.instrument]);
 
-  useEffect(() => {
-    if (round) {
-      const t = setTimeout(play, 300);
-      return () => clearTimeout(t);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [round]);
+  // Клик по "▶": на iOS/Safari звук разблокируется ТОЛЬКО синхронным вызовом
+  // внутри настоящего user gesture — поэтому unlockAudioContext() вызывается
+  // прямо здесь, а не где-то в setTimeout/эффекте.
+  const handlePlayClick = () => {
+    unlockAudioContext();
+    play();
+  };
 
   const handleAnswer = (guessId) => {
     if (roundLockRef.current || !round) return;
@@ -112,10 +117,10 @@ export default function IntervalsExercise({ settings, unlockedIds, progress, set
       </p>
 
       <div className="center-col">
-        <button className="play-btn" onClick={play} disabled={isPlaying}>
+        <button className="play-btn" onClick={handlePlayClick}>
           {isPlaying ? '♪' : '▶'}
         </button>
-        <p className="muted">Нажми, чтобы прослушать снова</p>
+        <p className="muted">Нажми, чтобы прослушать</p>
       </div>
 
       <div className="section-title">Какой это интервал?</div>

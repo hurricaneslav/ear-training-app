@@ -1,4 +1,4 @@
-import { getAudioContext, applyEnvelope } from './synth.js';
+import { getAudioContext, applyEnvelope, getMasterOut } from './synth.js';
 
 // Каждая play-функция: (freq, startTime, duration) -> void
 // Все они используют один и тот же audioCtx.currentTime как базу для планирования.
@@ -11,7 +11,7 @@ export function playPiano(freq, startTime, duration = 1.4) {
   const audioCtx = getAudioContext();
   const master = audioCtx.createGain();
   master.gain.value = 0.35;
-  master.connect(audioCtx.destination);
+  master.connect(getMasterOut());
 
   // относительные амплитуды гармоник (1-я это основной тон)
   const harmonics = [1, 0.55, 0.3, 0.15, 0.08, 0.04];
@@ -66,7 +66,7 @@ export function playBass(freq, startTime, duration = 1.2) {
   const audioCtx = getAudioContext();
   const master = audioCtx.createGain();
   master.gain.value = 0.5;
-  master.connect(audioCtx.destination);
+  master.connect(getMasterOut());
 
   const osc1 = audioCtx.createOscillator();
   osc1.type = 'triangle';
@@ -147,7 +147,6 @@ export function playGuitar(freq, startTime, duration = 1.6) {
   const damping = 0.995;
   let ringIndex = 0;
   let prevOut = 0;
-  let prevFrac = 0;
 
   for (let n = 0; n < totalSamples; n++) {
     const idx0 = ringIndex;
@@ -182,7 +181,7 @@ export function playGuitar(freq, startTime, duration = 1.6) {
 
   source.connect(g);
   g.connect(master);
-  master.connect(audioCtx.destination);
+  master.connect(getMasterOut());
 
   source.start(startTime);
   source.stop(startTime + duration + 0.05);

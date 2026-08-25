@@ -8,10 +8,8 @@ const DIRECTION_OPTIONS = [
   { id: 'harmonic', label: 'Гармонический' },
 ];
 
-export default function IntervalsSettings({ settings, unlockedIds, onChange, onStart, onBack }) {
+export default function IntervalsSettings({ settings, onChange, onStart, onBack }) {
   const toggleInterval = (id) => {
-    const isUnlocked = unlockedIds.includes(id) || settings.enabled_intervals.includes(id);
-    if (!isUnlocked) return; // нельзя включить ещё не открытый интервал
     const enabled = settings.enabled_intervals.includes(id)
       ? settings.enabled_intervals.filter((x) => x !== id)
       : [...settings.enabled_intervals, id];
@@ -69,22 +67,20 @@ export default function IntervalsSettings({ settings, unlockedIds, onChange, onS
       <div className="section-title">Интервалы</div>
       <div>
         {INTERVALS.map((iv) => {
-          const isUnlocked = unlockedIds.includes(iv.id);
           const isOn = settings.enabled_intervals.includes(iv.id);
           return (
             <button
               key={iv.id}
-              className={`pill ${isOn ? 'on' : ''} ${!isUnlocked ? 'locked' : ''}`}
+              className={`pill ${isOn ? 'on' : ''}`}
               onClick={() => toggleInterval(iv.id)}
-              disabled={!isUnlocked}
             >
-              {iv.short} {!isUnlocked && '🔒'}
+              {iv.short}
             </button>
           );
         })}
       </div>
       <p className="muted" style={{ marginTop: 8 }}>
-        Новые интервалы открываются по мере прохождения упражнения.
+        Если выбрано несколько интервалов, они будут открываться постепенно по мере прохождения — сначала простые, затем сложнее.
       </p>
 
       <button

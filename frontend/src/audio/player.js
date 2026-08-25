@@ -1,4 +1,4 @@
-import { getAudioContext } from './synth.js';
+import { getAudioContext, stopAllSounds } from './synth.js';
 import { midiToFreq } from './intervals.js';
 import { INSTRUMENTS } from './instruments.js';
 
@@ -8,6 +8,11 @@ const GAP = 0.15; // сек, пауза между нотами при посл�
 // direction: 'up' | 'down' | 'harmonic'
 // (режим 'both' в UI — это случайный выбор 'up'/'down' на каждый раунд, см. exerciseEngine)
 export function playInterval({ rootMidi, semitones, direction, instrumentId = 'piano' }) {
+  // Обрываем всё, что могло остаться играть с прошлого вызова (например, если
+  // пользователь быстро нажал "▶" повторно или начался новый раунд) — иначе
+  // звуки накладываются друг на друга и создают ощущение "лага"/очереди.
+  stopAllSounds();
+
   const audioCtx = getAudioContext();
   const instrument = INSTRUMENTS[instrumentId] || INSTRUMENTS.piano;
   const now = audioCtx.currentTime + 0.05; // небольшой запас на планирование

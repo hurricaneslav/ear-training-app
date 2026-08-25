@@ -38,7 +38,7 @@ export default function App() {
       });
   }, []);
 
-  const unlockedIds = computeUnlockedIds(progress);
+  const unlockedIds = computeUnlockedIds(settings.enabled_intervals, progress);
 
   const saveSettings = (next) => {
     setSettings(next);
@@ -75,7 +75,6 @@ export default function App() {
       {screen === 'interval-settings' && (
         <IntervalsSettings
           settings={settings}
-          unlockedIds={unlockedIds}
           onChange={saveSettings}
           onStart={() => setScreen('interval-exercise')}
           onBack={() => setScreen('ear-tab')}
