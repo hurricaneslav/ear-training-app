@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_BASE || 'https://ear-training-app-production.up.railway.app';
+const API_BASE = import.meta.env.VITE_API_BASE || 'https://YOUR-RAILWAY-APP.up.railway.app';
 
 function getUserId() {
   const tg = window.Telegram?.WebApp;
