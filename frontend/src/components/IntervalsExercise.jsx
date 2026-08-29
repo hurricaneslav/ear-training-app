@@ -11,6 +11,15 @@ import {
 } from '../audio/exerciseEngine.js';
 import { api } from '../api.js';
 
+// iOS (и WKWebView внутри Telegram на iOS) не даёт веб-странице узнать состояние
+// аппаратного переключателя звонка — это осознанное ограничение Apple, обхода
+// не существует. Единственный честный вариант — заранее предупредить, а не
+// пытаться угадать состояние переключателя и молчать без объяснений.
+function isIOS() {
+  if (typeof navigator === 'undefined') return false;
+  return /iPhone|iPad|iPod/.test(navigator.userAgent);
+}
+
 // answerState: null (не отвечено) | 'correct' | 'wrong'
 export default function IntervalsExercise({ settings, unlockedIds, progress, setProgress, onBack, onUnlock }) {
   const [round, setRound] = useState(null);
@@ -19,6 +28,7 @@ export default function IntervalsExercise({ settings, unlockedIds, progress, set
   const [isPlaying, setIsPlaying] = useState(false);
   const roundLockRef = useRef(false);
   const playTimeoutRef = useRef(null);
+  const showIosHint = isIOS();
 
   const activeIds = getActiveIntervalIds(settings.enabled_intervals, unlockedIds);
 
@@ -122,6 +132,11 @@ export default function IntervalsExercise({ settings, unlockedIds, progress, set
           {isPlaying ? '♪' : '▶'}
         </button>
         <p className="muted">Нажми, чтобы прослушать</p>
+        {showIosHint && (
+          <p className="ios-sound-hint">
+            🔇 Если звука нет — проверь переключатель звонка сбоку iPhone (должен быть в звуковом режиме). iOS не даёт сайтам играть звук при включённом беззвучном режиме.
+          </p>
+        )}
       </div>
 
       <div className="section-title">Какой это интервал?</div>

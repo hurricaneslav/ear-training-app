@@ -8,6 +8,13 @@ const DIRECTION_OPTIONS = [
   { id: 'harmonic', label: 'Гармонический' },
 ];
 
+// iOS не даёт веб-странице узнать состояние аппаратного переключателя звонка —
+// осознанное ограничение платформы, обхода не существует, поэтому предупреждаем заранее.
+function isIOS() {
+  if (typeof navigator === 'undefined') return false;
+  return /iPhone|iPad|iPod/.test(navigator.userAgent);
+}
+
 export default function IntervalsSettings({ settings, onChange, onStart, onBack }) {
   const toggleInterval = (id) => {
     const enabled = settings.enabled_intervals.includes(id)
@@ -20,6 +27,12 @@ export default function IntervalsSettings({ settings, onChange, onStart, onBack 
     <div className="screen">
       <button className="back-btn" onClick={onBack}>‹ Назад</button>
       <h2>Интервалы — настройки</h2>
+
+      {isIOS() && (
+        <p className="ios-sound-hint" style={{ marginBottom: 16 }}>
+          🔇 Перед началом проверь переключатель звонка сбоку iPhone — он должен быть в звуковом режиме, иначе звук не будет проигрываться.
+        </p>
+      )}
 
       <div className="section-title">Инструмент</div>
       <div className="row">
