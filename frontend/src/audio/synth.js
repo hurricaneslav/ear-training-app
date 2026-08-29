@@ -44,22 +44,43 @@ export function stopAllSounds() {
   masterOut = null; // следующий getMasterOut() создаст новый чистый узел
 }
 
-// iOS Safari требует, чтобы создание/resume AudioContext произошло СИНХРОННО
-// внутри обработчика user gesture (клик/тап), иначе звук навсегда останется
-// заблокирован для этого контекста. Вызывать эту функцию напрямую в onClick,
-// без await/setTimeout перед вызовом getAudioContext().
+// iOS Safari (и WKWebView внутри Telegram, который на iOS ВСЕГДА использует движок
+// Safari — так требует сама Apple) требует, чтобы создание/resume AudioContext
+// произошло СИНХРОННО внутри обработчика user gesture (клик/тап), иначе звук
+// навсегда останется заблокирован для этого контекста. Вызывать эту функцию
+// напрямую в onClick, без await/setTimeout перед вызовом getAudioContext().
 export function unlockAudioContext() {
   const audioCtx = getAudioContext();
   if (audioCtx.state === 'suspended') {
+    // resume() асинхронный — само его вызывание не гарантирует, что context
+    // уже 'running' к моменту, когда мы начнём планировать ноты через currentTime.
+    // Если контекст всё ещё suspended в момент планирования, события просто
+    // никогда не наступают - без единой ошибки в консоли, просто тишина.
     audioCtx.resume();
   }
-  // Доп. трюк для iOS: проиграть беззвучный буфер синхронно в жесте -
-  // это надёжно "будит" аудио-подсистему даже когда resume() ещё не успел зарезолвиться
+  // Беззвучный буфер синхронно в жесте - "будит" аудио-подсистему на iOS
+  // даже когда resume() ещё не успел зарезолвиться.
   const buffer = audioCtx.createBuffer(1, 1, 22050);
   const source = audioCtx.createBufferSource();
   source.buffer = buffer;
   source.connect(audioCtx.destination);
   source.start(0);
+  return audioCtx;
+}
+
+// Гарантирует, что контекст реально 'running' перед тем как планировать звук.
+// В отличие от unlockAudioContext (синхронный "будильник" для user gesture),
+// это асинхронная подстраховка — используется прямо перед планированием нот,
+// чтобы не потерять события, если resume() из клика ещё не успел завершиться.
+export async function ensureAudioRunning() {
+  const audioCtx = getAudioContext();
+  if (audioCtx.state !== 'running') {
+    try {
+      await audioCtx.resume();
+    } catch (e) {
+      // no-op — попытка сделана, дальше играем как есть
+    }
+  }
   return audioCtx;
 }
 

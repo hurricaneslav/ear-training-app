@@ -48,13 +48,14 @@ export default function IntervalsExercise({ settings, unlockedIds, progress, set
     const interval = getInterval(target.intervalId);
     setIsPlaying(true);
     if (playTimeoutRef.current) clearTimeout(playTimeoutRef.current);
-    const dur = playInterval({
+    playInterval({
       rootMidi: target.rootMidi,
       semitones: interval.semitones,
       direction: target.direction,
       instrumentId: settings.instrument,
+    }).then((dur) => {
+      playTimeoutRef.current = setTimeout(() => setIsPlaying(false), dur * 1000);
     });
-    playTimeoutRef.current = setTimeout(() => setIsPlaying(false), dur * 1000);
   }, [round, settings.instrument]);
 
   // Клик по "▶": на iOS/Safari звук разблокируется ТОЛЬКО синхронным вызовом
